@@ -17,7 +17,10 @@ type Bot struct {
 
 func NewBot(config disgord.Config) Bot {
 	return Bot{
-		Client: disgord.New(config),
+		Client:                disgord.New(config),
+		Commands:              []*disgord.CreateApplicationCommand{},
+		ActiveCommandHandlers: map[string]interactionHandler{},
+		ComponentHandlers:     map[string]interactionHandler{},
 	}
 }
 func (b *Bot) Run() error {
