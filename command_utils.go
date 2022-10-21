@@ -7,9 +7,9 @@ import (
 	"github.com/andersfylling/disgord"
 )
 
-type interactionHandler func(s disgord.Session, h *disgord.InteractionCreate) error
+type InteractionHandler func(session disgord.Session, interaction *disgord.InteractionCreate) error
 
-func (b *Bot) AddCommand(command *disgord.CreateApplicationCommand, options BotCommandOptions, handler interactionHandler) {
+func (b *Bot) AddCommand(command *disgord.CreateApplicationCommand, options BotCommandOptions, handler InteractionHandler) {
 	b.Commands = append(b.Commands, command)
 	b.CommandHandlers[command.Name] = BotCommand{
 		Handler: handler,
@@ -19,15 +19,15 @@ func (b *Bot) AddCommand(command *disgord.CreateApplicationCommand, options BotC
 
 type ComponentHandler struct {
 	Expiry  int64
-	Handler interactionHandler
+	Handler InteractionHandler
 }
 
-func (b *Bot) NewComponentHandler(handler interactionHandler) string {
+func (b *Bot) NewComponentHandler(handler InteractionHandler) string {
 	randID := b.NewComponentHandlerFromOptions(BotComponentOptions{}, handler)
 	return randID
 }
 
-func (b *Bot) NewComponentHandlerFromOptions(options BotComponentOptions, handler interactionHandler) string {
+func (b *Bot) NewComponentHandlerFromOptions(options BotComponentOptions, handler InteractionHandler) string {
 	randNum := rand.Intn(999999999999)
 	randID := fmt.Sprint(randNum)
 	newComponent := BotComponent{

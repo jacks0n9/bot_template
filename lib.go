@@ -1,18 +1,17 @@
 package bot_template
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/andersfylling/disgord"
 )
 
 type BotCommand struct {
-	Handler interactionHandler
+	Handler InteractionHandler
 	Options BotCommandOptions
 }
 type BotComponent struct {
-	Handler interactionHandler
+	Handler InteractionHandler
 	Options BotComponentOptions
 }
 type BotComponentOptions struct {
@@ -22,6 +21,8 @@ type BotComponentOptions struct {
 	UserLockedTo disgord.Snowflake
 	// Sent when somebody that isn't userlockedto clicks the button
 	OutsideInteractionErrorMessage disgord.CreateInteractionResponse
+	// Choose if the button will only respond to one click (won't disable)
+	OneClickOnly bool
 }
 type BotCommandOptions struct {
 	// Only people who have this perm or above can use command
@@ -54,6 +55,44 @@ func NewBot() Bot {
 		Commands:                []*disgord.CreateApplicationCommand{},
 		CommandHandlers:         map[string]BotCommand{},
 		ActiveComponentHandlers: map[string]BotComponent{},
+		Config: BotConfig{
+			DefaultPermissionErrorMessage: disgord.CreateInteractionResponse{
+				Type: disgord.InteractionCallbackChannelMessageWithSource,
+				Data: &disgord.CreateInteractionResponseData{
+					Flags: disgord.MessageFlagEphemeral,
+					Embeds: []*disgord.Embed{
+						{
+							Title: "You do not have the required permission for this command.",
+							Color: 0xff0000,
+						},
+					},
+				},
+			},
+			DefaultOutsideInteractionErrorMessage: disgord.CreateInteractionResponse{
+				Type: disgord.InteractionCallbackChannelMessageWithSource,
+				Data: &disgord.CreateInteractionResponseData{
+					Flags: disgord.MessageFlagEphemeral,
+					Embeds: []*disgord.Embed{
+						{
+							Title: "This isn't your button!",
+							Color: 0xff0000,
+						},
+					},
+				},
+			},
+			DefaultGeneralErrorMessage: disgord.CreateInteractionResponse{
+				Type: disgord.InteractionCallbackChannelMessageWithSource,
+				Data: &disgord.CreateInteractionResponseData{
+					Flags: disgord.MessageFlagEphemeral,
+					Embeds: []*disgord.Embed{
+						{
+							Title: "An error occured performing this action.",
+							Color: 0xff0000,
+						},
+					},
+				},
+			},
+		},
 	}
 }
 func (b *Bot) Run() error {
@@ -72,57 +111,7 @@ func (b *Bot) Run() error {
 		}
 		client.Logger().Info(fmt.Sprintf("Logged in as %s#%s ", user.Username, user.Discriminator))
 	})
-	client.Gateway().InteractionCreate(func(s disgord.Session, h *disgord.InteractionCreate) {
-		empty := disgord.CreateInteractionResponse{}
-		errResp := empty
-		switch h.Type {
-		case disgord.InteractionApplicationCommand:
-			{
-				cmd := b.CommandHandlers[h.Data.Name]
-				perms, _ := h.Member.GetPermissions(context.Background(), s)
-				if !perms.Contains(cmd.Options.RequiredPermission) {
-					if msg := cmd.Options.PermissionErrorMessage; msg != empty {
-						errResp = msg
-					} else {
-						errResp = b.Config.DefaultPermissionErrorMessage
-					}
-					break
-				}
-				err := cmd.Handler(s, h)
-				if err != nil {
-					b.Client.Logger().Error(fmt.Sprintf("Error occured running command %s: %s", h.Data.Name, err))
-				}
-				if msg := cmd.Options.GeneralErrorMessage; msg != empty {
-					errResp = msg
-				} else {
-					errResp = b.Config.DefaultGeneralErrorMessage
-				}
-
-			}
-		case disgord.InteractionMessageComponent:
-			{
-				comp := b.ActiveComponentHandlers[h.Data.CustomID]
-				if comp.Options.UserLockedTo != h.User.ID {
-					if msg := comp.Options.OutsideInteractionErrorMessage; msg != empty {
-						errResp = msg
-					} else {
-						errResp = b.Config.DefaultOutsideInteractionErrorMessage
-					}
-					break
-				}
-				err := comp.Handler(s, h)
-				if err != nil {
-					if msg := comp.Options.GeneralErrorMessage; msg != empty {
-						errResp = msg
-					} else {
-						errResp = b.Config.DefaultGeneralErrorMessage
-					}
-					break
-				}
-			}
-		}
-		s.SendInteractionResponse(context.Background(), h, &errResp)
-	})
+	client.Gateway().InteractionCreate(b.handleInteraction)
 	if err != nil {
 		return fmt.Errorf("error while connected to gateway: %s", err)
 	}
