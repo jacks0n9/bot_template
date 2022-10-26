@@ -1,6 +1,7 @@
 package bot_template
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/andersfylling/disgord"
@@ -45,12 +46,12 @@ type Bot struct {
 	ActiveComponentHandlers map[string]BotComponent
 }
 
-func NewBotWithConfig(client_config disgord.Config) Bot {
-	new := NewBot()
-	new.Client = disgord.New(client_config)
-	return new
+func NewBotWithConfig(clientConfig BotConfig) Bot {
+	newBot := NewBotWithDefault()
+	newBot.Config = clientConfig
+	return newBot
 }
-func NewBot() Bot {
+func NewBotWithDefault() Bot {
 	return Bot{
 		Commands:                []*disgord.CreateApplicationCommand{},
 		CommandHandlers:         map[string]BotCommand{},
@@ -97,6 +98,9 @@ func NewBot() Bot {
 }
 
 func (b *Bot) Run() error {
+	if b.Client == nil {
+		return errors.New("cannot run bot without a client")
+	}
 	client := b.Client
 	client.Gateway().BotReady(func() {
 		user, _ := client.CurrentUser().Get()

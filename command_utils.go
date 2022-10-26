@@ -9,17 +9,15 @@ import (
 
 type InteractionHandler func(session disgord.Session, interaction *disgord.InteractionCreate) error
 
-func (b *Bot) AddCommand(command *disgord.CreateApplicationCommand, options BotCommandOptions, handler InteractionHandler) {
+func (b *Bot) AddCommand(command *disgord.CreateApplicationCommand, options *BotCommandOptions, handler InteractionHandler) {
 	b.Commands = append(b.Commands, command)
+	if options == nil {
+		options = &BotCommandOptions{}
+	}
 	b.CommandHandlers[command.Name] = BotCommand{
 		Handler: handler,
-		Options: options,
+		Options: *options,
 	}
-}
-
-type ComponentHandler struct {
-	Expiry  int64
-	Handler InteractionHandler
 }
 
 func (b *Bot) NewComponentHandler(handler InteractionHandler) string {
