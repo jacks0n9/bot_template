@@ -8,8 +8,16 @@ import (
 )
 
 func (b *Bot) handleInteraction(session disgord.Session, interaction *disgord.InteractionCreate) {
+
 	empty := disgord.CreateInteractionResponse{}
 	errResp := empty
+	defer func() {
+		if err := recover(); err != nil {
+			b.Client.Logger().Error(fmt.Sprintf("A panic occurred: %v", err))
+			session.SendInteractionResponse(context.Background(), interaction, &b.Config.DefaultGeneralErrorMessage)
+			return
+		}
+	}()
 	switch interaction.Type {
 	case disgord.InteractionApplicationCommand:
 		{
@@ -37,7 +45,12 @@ func (b *Bot) handleInteraction(session disgord.Session, interaction *disgord.In
 		}
 	case disgord.InteractionMessageComponent:
 		{
-			comp := b.ActiveComponentHandlers[interaction.Data.CustomID]
+			var comp BotComponent
+			if futureComp, ok := b.ActiveComponentHandlers[interaction.Data.CustomID]; !ok {
+				return
+			} else {
+				comp = futureComp
+			}
 			if id := comp.Options.UserLockedTo; id != 0 {
 				if id != interaction.Member.UserID {
 					if msg := comp.Options.OutsideInteractionErrorMessage; msg != empty {

@@ -29,11 +29,20 @@ func (b *Bot) NewComponentHandler(handler InteractionHandler) string {
 
 func (b *Bot) NewComponentHandlerFromOptions(options BotComponentOptions, handler InteractionHandler) string {
 	randNum := rand.Intn(999999999999)
-	randID := fmt.Sprint(randNum)
+	// Append prefix so you don't accidentally add a custom id link thing
+	randID := fmt.Sprint(randNum) + "-g"
 	newComponent := BotComponent{
 		Handler: handler,
 		Options: options,
 	}
-	b.ActiveComponentHandlers[randID] = newComponent
+	b.LinkIDToHandler(randID, newComponent)
 	return randID
+}
+func (b *Bot) LinkIDToHandler(ID string, comp BotComponent) {
+	b.ActiveComponentHandlers[ID] = comp
+}
+func (b *Bot) LinkIDsToHandlers(compMap map[string]BotComponent) {
+	for name, comp := range compMap {
+		b.ActiveComponentHandlers[name] = comp
+	}
 }

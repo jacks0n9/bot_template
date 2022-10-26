@@ -95,12 +95,9 @@ func NewBot() Bot {
 		},
 	}
 }
+
 func (b *Bot) Run() error {
 	client := b.Client
-	var err error
-	defer func() {
-		err = client.Gateway().StayConnectedUntilInterrupted()
-	}()
 	client.Gateway().BotReady(func() {
 		user, _ := client.CurrentUser().Get()
 		for _, command := range b.Commands {
@@ -112,8 +109,10 @@ func (b *Bot) Run() error {
 		client.Logger().Info(fmt.Sprintf("Logged in as %s#%s ", user.Username, user.Discriminator))
 	})
 	client.Gateway().InteractionCreate(b.handleInteraction)
+
+	err := client.Gateway().StayConnectedUntilInterrupted()
 	if err != nil {
-		return fmt.Errorf("error while connected to gateway: %s", err)
+		return err
 	}
 	return nil
 }
